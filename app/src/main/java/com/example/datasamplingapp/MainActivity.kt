@@ -17,6 +17,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var sensorManager : SensorManager by Delegates.notNull<SensorManager>()
     private var accelerations : ArrayList<FloatArray>? = null
+    private var linearAccelerations : ArrayList<FloatArray>? = null
+    private var orientations : ArrayList<FloatArray>? = null
     private var time: Calendar by Delegates.notNull<Calendar>()
 
 
@@ -39,12 +41,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         stopButton.setOnClickListener {v ->
             disableSensor()
-
+            writeCSV(textNote.text.toString(), null)
+            writeCSV("Acceleration", accelerations)
+            writeCSV("Linear Acceleration", linearAccelerations)
+            writeCSV("Orientation", orientations)
         }
     }
 
     private fun enableSensor(){
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_FASTEST)
+
     }
 
     private fun disableSensor(){
@@ -69,9 +77,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             data[2] = event.values[1]
             data[3] = event.values[2]
             when{
-                (event.sensor.type == Sensor.TYPE_ACCELEROMETER) -> {
-                    accelerations?.add(data)
-                }
+                (event.sensor.type == Sensor.TYPE_ACCELEROMETER) -> accelerations?.add(data)
+                (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) -> linearAccelerations?.add(data)
+                (event.sensor.type == Sensor.TYPE_ORIENTATION) -> orientations?.add(data)
             }
         }
     }
@@ -80,11 +88,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     }
 
-    fun writeCSV(sensor: String, data: ArrayList<FloatArray>){
+    private fun writeCSV(sensor: String, data: ArrayList<FloatArray>?){
         var txt = "Time,X-value,Y-value,Z-value"
-        File(applicationContext.filesDir, "SensorData").writer().use {
-            it.write("")
+        if (data != null) {
+            for (column in data){
+                txt += ("\n" + column[0].toString() + "," + column[1].toString() + "," + column[2].toString() + "," + column[3].toString())
+            }
         }
+        txt = sensor + "\n" + txt
+        File(applicationContext.filesDir, "SensorData.csv").appendText(txt)
     }
 
 }
