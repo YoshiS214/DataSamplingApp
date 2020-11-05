@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:textAlignment="center"
+    android:verticalScrollbarPosition="defaultPosition"
     tools:context=".MainActivity">
 
     <LinearLayout
@@ -20,33 +21,36 @@
             android:id="@+id/text_note"
             android:layout_width="337dp"
             android:layout_height="128dp"
+            android:layout_gravity="center_horizontal"
             android:layout_marginStart="32dp"
             android:layout_marginTop="10dp"
             android:layout_marginEnd="32dp"
             android:layout_marginBottom="21dp"
-            android:layout_gravity="center_horizontal"
             android:autofillHints=""
             android:ems="10"
             android:inputType="textPersonName"
             android:isScrollContainer="true"
+            android:labelFor="@id/text_log"
             android:scrollbarAlwaysDrawVerticalTrack="true"
             android:singleLine="false"
             android:text="@string/add_some_information_on_situation" />
 
-        <TextView
-            android:id="@+id/text_log"
-            android:layout_width="330dp"
-            android:layout_height="138dp"
-            android:layout_gravity="center_horizontal"
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
             android:layout_marginStart="40dp"
             android:layout_marginTop="30dp"
-            android:layout_marginEnd="40dp"
-            android:background="#2500BCD4"
-            android:gravity="center_vertical"
-            android:isScrollContainer="true"
-            android:scrollbarAlwaysDrawVerticalTrack="true"
-            android:scrollbars="vertical"
-            android:text="Log will be here..." />
+            android:layout_marginEnd="40dp">
+
+            <TextView
+                android:id="@+id/text_log"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:background="#2500BCD4"
+                android:gravity="center_vertical"
+                android:text="@string/log_txt" />
+        </ScrollView>
 
         <Space
             android:layout_width="match_parent"
@@ -55,29 +59,41 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
+            android:layout_gravity="center"
+            android:orientation="horizontal">
 
             <Button
                 android:id="@+id/start_record"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/start_record" />
 
             <Button
-                android:id="@+id/reset_data"
+                android:id="@+id/show_data"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Reset" />
+                android:text="@string/show" />
+
+            <Button
+                android:id="@+id/reset_data"
+                style="@style/Widget.AppCompat.Button.Colored"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/reset" />
 
             <Button
                 android:id="@+id/stop_record"
+                style="@style/Widget.AppCompat.Button.Colored"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:text="@string/stop_record" />
+
         </LinearLayout>
 
     </LinearLayout>

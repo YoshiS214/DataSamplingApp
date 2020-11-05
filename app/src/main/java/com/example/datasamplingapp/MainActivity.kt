@@ -26,7 +26,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private var sensorManager : SensorManager by Delegates.notNull<SensorManager>()
     private var accelerations : ArrayList<DoubleArray>? = ArrayList()
     private var linearAccelerations : ArrayList<DoubleArray>? = ArrayList()
-    private var orientations : ArrayList<DoubleArray>? = ArrayList()
+    //private var orientations : ArrayList<DoubleArray>? = ArrayList()
+
+    private val accelerometerReading = FloatArray(3)
+    private val linearReading = FloatArray(3)
+    private val magnetometerReading = FloatArray(3)
+
+    private val rotationMatrix = FloatArray(9)
+    private val orientationAngles = FloatArray(3)
+
     private var time: Calendar by Delegates.notNull<Calendar>()
     private var uri : Uri by Delegates.notNull<Uri>()
     private lateinit var textLog : TextView
@@ -44,16 +52,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val startButton = findViewById<Button>(R.id.start_record) as Button
         val stopButton = findViewById<Button>(R.id.stop_record) as Button
         val resetButton = findViewById<Button>(R.id.reset_data) as Button
+        val showButton = findViewById<Button>(R.id.show_data) as Button
         textLog = findViewById<TextView>(R.id.text_log) as TextView
 
+        var txt = ""
 
-
-        createCSV()
+        //createCSV()
         stopButton.isClickable = false
         disableSensor()
 
         startButton.setOnClickListener { v ->
-            updateLog("Started!!")
+            updateLog("Started!!", true)
             initialise()
             enableSensor()
             stopButton.isClickable = true
@@ -61,9 +70,25 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         }
 
+        showButton.setOnClickListener { v ->
+            for (x in 0..2){
+                for (y in 1..3){
+                    txt = "$txt${rotationMatrix[x*3 + y -1]}|"
+                }
+                txt += "\n"
+            }
+            updateLog("Rotation\n$txt")
+            txt = ""
+            for (x: Float in orientationAngles){
+                txt = "$txt$x|"
+            }
+            updateLog("Orientation\n$txt")
+            txt = ""
+        }
+
         resetButton.setOnClickListener { v ->
             disableSensor()
-            updateLog("Stopped!!")
+            updateLog("Stopped!!", true)
             initialise()
             //writeCSV(textNote.text.toString(), null)
             //writeCSV("Acceleration", accelerations)
@@ -75,9 +100,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         stopButton.setOnClickListener {v ->
             disableSensor()
-            updateLog("Stopped!!")
-            writeCSV(textNote.text.toString(), null)
-            writeCSV("Acceleration", accelerations)
+            updateLog("Stopped!!", true)
+            //writeCSV(textNote.text.toString(), null)
+            //writeCSV("Acceleration", accelerations)
             //writeCSV("Linear Acceleration", linearAccelerations)
             //writeCSV("Orientation", orientations)
             startButton.isClickable = true
@@ -102,11 +127,15 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             data[1] = event.values[0].toDouble()
             data[2] = event.values[1].toDouble()
             data[3] = event.values[2].toDouble()
-            updateLog(event.sensor.type.toString()+"|"+data[0]+"|"+data[1]+"|"+data[2]+"|"+data[3])
+            //updateLog(event.sensor.type.toString()+"|"+data[0]+"|"+data[1]+"|"+data[2]+"|"+data[3])
             when{
-                (event.sensor.type == Sensor.TYPE_ACCELEROMETER) -> accelerations?.add(data)
+                (event.sensor.type == Sensor.TYPE_ACCELEROMETER) -> System.arraycopy(event.values, 0,accelerometerReading,0,accelerometerReading.size)
                 (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) -> linearAccelerations?.add(data)
-                (event.sensor.type == Sensor.TYPE_ORIENTATION) -> orientations?.add(data)
+                //(event.sensor.type == Sensor.TYPE_ORIENTATION) -> orientations?.add(data)
+                (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) -> System.arraycopy(event.values, 0,magnetometerReading,0,magnetometerReading.size)
+            }
+            if (accelerometerReading != FloatArray(3) && magnetometerReading != FloatArray(3)){
+                Calculate()
             }
         }
     }
@@ -135,14 +164,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun initialise(){
         accelerations?.clear()
         linearAccelerations?.clear()
-        orientations?.clear()
+        //orientations?.clear()
     }
 
     private fun enableSensor(){
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST)
         sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION), SensorManager.SENSOR_DELAY_FASTEST)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_FASTEST)
-
+        //sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_FASTEST)
     }
 
     private fun disableSensor(){
@@ -150,11 +179,19 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     }
 
-    private fun updateLog(txt : String){
+    private fun Calculate(){
+        SensorManager.getRotationMatrix(rotationMatrix,null,accelerometerReading,magnetometerReading)
+        SensorManager.getOrientation(rotationMatrix,orientationAngles)
+    }
+
+    private fun updateLog(txt : String, clear : Boolean = false){
         if (textLog != null) {
-            var previousLines = textLog.text.toString()
-            //textLog.text = "$previousLines$txt" + "\n"
-            textLog.text = txt
+            if (clear){
+                textLog.text = txt
+            }else{
+                var previousLines = textLog.text.toString()
+                textLog.text = "$previousLines\n$txt"
+            }
 
         }
     }
@@ -165,7 +202,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             BufferedReader(InputStreamReader(inputStream)).use { reader ->
                 var line: String? = reader.readLine()
                 while (line != null) {
-                    stringBuilder.append(line)
+                    stringBuilder.append(line+"\n")
                     line = reader.readLine()
                 }
             }

@@ -4,4 +4,7 @@
     <string name="start_record">Start Record</string>
     <string name="add_some_information_on_situation">Add some information on situation</string>
     <string name="stop_record">stop record</string>
+    <string name="log_txt">Log will be here...</string>
+    <string name="reset">Reset</string>
+    <string name="show">Show</string>
 </resources>
