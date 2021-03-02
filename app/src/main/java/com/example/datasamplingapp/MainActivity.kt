@@ -21,11 +21,12 @@ import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.net.URI
 
+
 class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private var sensorManager : SensorManager by Delegates.notNull<SensorManager>()
-    private var accelerations : ArrayList<DoubleArray>? = ArrayList()
-    private var linearAccelerations : ArrayList<DoubleArray>? = ArrayList()
+    //private var accelerations : ArrayList<DoubleArray>? = ArrayList()
+    //private var linearAccelerations : ArrayList<DoubleArray>? = ArrayList()
     //private var orientations : ArrayList<DoubleArray>? = ArrayList()
 
     private val accelerometerReading = FloatArray(3)
@@ -35,9 +36,24 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private val rotationMatrix = FloatArray(9)
     private val orientationAngles = FloatArray(3)
 
+    private var accelerations = Matrix(3,1)
+    private var displacements = Matrix(3,1)
+
+    private var check = Matrix(3,1)
+
+    private var lowpass = Matrix(3,1)
+    private var highpass = Matrix(3,1)
+    private var preVelocity = Matrix(3,1)
+    private var velocity = Matrix(3,1)
+
+    private val filterCoefficient: Float = 0.9F
+
     private var time: Calendar by Delegates.notNull<Calendar>()
     private var uri : Uri by Delegates.notNull<Uri>()
     private lateinit var textLog : TextView
+    private var timeStamp: Pair<Double,Double> = Pair(0.0,0.0)
+
+    private var detected = 0
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -71,19 +87,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         }
 
         showButton.setOnClickListener { v ->
-            for (x in 0..2){
-                for (y in 1..3){
-                    txt = "$txt${rotationMatrix[x*3 + y -1]}|"
-                }
-                txt += "\n"
-            }
-            updateLog("Rotation\n$txt")
-            txt = ""
-            for (x: Float in orientationAngles){
-                txt = "$txt$x|"
-            }
-            updateLog("Orientation\n$txt")
-            txt = ""
+            updateLog("Detected: $detected")
+            updateLog("Check\nx: ${check.matrix[0]}\ny: ${check.matrix[1]}\nz: ${check.matrix[0]}")
+            updateLog("Low\nx: ${lowpass.matrix[0]}\ny: ${lowpass.matrix[1]}\nz: ${lowpass.matrix[0]}")
+            updateLog("High\nx: ${highpass.matrix[0]}\ny: ${highpass.matrix[1]}\nz: ${highpass.matrix[0]}")
+            updateLog("Displacement\nx: ${displacements.matrix[0]}\ny: ${displacements.matrix[1]}\nz: ${displacements.matrix[0]}")
         }
 
         resetButton.setOnClickListener { v ->
@@ -121,21 +129,17 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        var data : DoubleArray = doubleArrayOf(0.0,0.0,0.0,0.0)
         if (event != null) {
-            data[0] = System.currentTimeMillis().toDouble()
-            data[1] = event.values[0].toDouble()
-            data[2] = event.values[1].toDouble()
-            data[3] = event.values[2].toDouble()
-            //updateLog(event.sensor.type.toString()+"|"+data[0]+"|"+data[1]+"|"+data[2]+"|"+data[3])
             when{
                 (event.sensor.type == Sensor.TYPE_ACCELEROMETER) -> System.arraycopy(event.values, 0,accelerometerReading,0,accelerometerReading.size)
-                (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) -> linearAccelerations?.add(data)
+                (event.sensor.type == Sensor.TYPE_LINEAR_ACCELERATION) -> {
+                    System.arraycopy(event.values, 0,linearReading,0,linearReading.size)
+                    timeStamp = Pair(timeStamp.second, System.currentTimeMillis().toDouble())}
                 //(event.sensor.type == Sensor.TYPE_ORIENTATION) -> orientations?.add(data)
                 (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) -> System.arraycopy(event.values, 0,magnetometerReading,0,magnetometerReading.size)
             }
-            if (accelerometerReading != FloatArray(3) && magnetometerReading != FloatArray(3)){
-                Calculate()
+            if (accelerometerReading != FloatArray(3) && magnetometerReading != FloatArray(3) && linearReading != FloatArray(3)){
+                calculate()
             }
         }
     }
@@ -162,26 +166,34 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun initialise(){
-        accelerations?.clear()
-        linearAccelerations?.clear()
+        //accelerations?.clear()
+        //linearAccelerations?.clear()
         //orientations?.clear()
     }
 
     private fun enableSensor(){
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_FASTEST)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION), SensorManager.SENSOR_DELAY_NORMAL)
         //sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_FASTEST)
-        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_FASTEST)
+        sensorManager.registerListener(this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD), SensorManager.SENSOR_DELAY_NORMAL)
     }
 
     private fun disableSensor(){
         sensorManager.unregisterListener(this)
-
     }
 
-    private fun Calculate(){
+    private fun calculate(){
         SensorManager.getRotationMatrix(rotationMatrix,null,accelerometerReading,magnetometerReading)
         SensorManager.getOrientation(rotationMatrix,orientationAngles)
+        orientationAngles.forEach { x -> -1*x }
+        accelerations.copy(Matrix.multipled(Matrix.inverse(Matrix(3,3,rotationMatrix))!!, Matrix(3,1,linearReading)))
+        check.copy(Matrix.addSubed(Matrix.scaled(lowpass, filterCoefficient), Matrix.scaled(accelerations, (1-filterCoefficient)), '+'))
+        //lowpass.Copy(Matrix(3,1, check.matrix))
+        //highpass.Copy(Matrix.AddSubed(accelerations, lowpass, '-'))
+        //velocity = Matrix.AddSubed(Matrix.Scaled(Matrix.AddSubed(lowpass,highpass, '+'), 0.5F*(timeStamp.second - timeStamp.first).toFloat()), velocity, '+')
+        //displacements = Matrix.AddSubed(Matrix.Scaled(Matrix.AddSubed(preVelocity,velocity, '+'), 0.5F*(timeStamp.second - timeStamp.first).toFloat()), displacements, '+')
+        //preVelocity = velocity
+        detected += 1
     }
 
     private fun updateLog(txt : String, clear : Boolean = false){
