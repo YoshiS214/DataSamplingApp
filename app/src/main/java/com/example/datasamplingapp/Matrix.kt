@@ -3,6 +3,7 @@ package com.example.datasamplingapp
 import kotlin.math.pow
 import kotlin.properties.Delegates
 
+
 class Matrix {
     lateinit var matrix: FloatArray
     var Row by Delegates.notNull<Int>()
@@ -102,7 +103,7 @@ class Matrix {
                 matrix.matrix[0]
             } else {
                 var det: Float = 0f
-                for (x in 0..matrix.Column) {
+                for (x in 0 until matrix.Column) {
                     det += (-1f).pow(x) * matrix.matrix[x] * determinant(filter(matrix, 1, x + 1))!!
                 }
                 det
@@ -114,7 +115,7 @@ class Matrix {
             var index = 0
 
 
-            for (x in 0..matrix.Size) {
+            for (x in 0 until matrix.Size) {
                 if ((x - c + 1) % matrix.Column != 0 && (x < matrix.Column * (r - 1) || x > matrix.Column * r - 1)) {
                     map[index] = matrix.matrix[x]
                     index += 1
@@ -123,7 +124,6 @@ class Matrix {
 
             return Matrix(matrix.Row - 1, matrix.Column - 1, map)
         }
-
 
         fun cofactor(matrix: Matrix): Matrix {
             var result = FloatArray(matrix.Size)
@@ -145,8 +145,8 @@ class Matrix {
             return if (matrix.Row != matrix.Column || determinant(matrix) == 0f){
                 null
             }else{
-                for (r in 0..matrix.Row) {
-                    for (c in 0..matrix.Column) {
+                for (r in 0 until matrix.Row) {
+                    for (c in 0 until matrix.Column) {
 
                         result[r * matrix.Row + c] = determinant(filter(matrix, r + 1, c + 1))!!
                     }
